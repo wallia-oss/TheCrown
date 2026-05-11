@@ -1433,7 +1433,7 @@
     // Parts not present here (3 and 5) trigger silhouette fallback.
     clipFiles: {
       0: ['clips/empty_01.mp4'],
-      1: ['clips/one_01.mp4'],
+      1: ['clips/one_01.mp4', 'clips/one_02.mp4'],
       2: ['clips/two_01.mp4', 'clips/two_02.mp4', 'clips/two_03.mp4'],
       4: ['clips/four_01.mp4'],
     },
@@ -2085,7 +2085,9 @@
 
     // Pre-resolve durations from the actual chosen clip files (so the round
     // progress bar animates over the correct total duration, not an assumed one).
-    const chosenUrls = sequence.map(count => pickClipFile(count));
+    // buildClipUrls applies within-round and cross-round deduplication.
+    const chosenUrls = buildClipUrls(sequence);
+    lastRoundFiles = chosenUrls.filter(Boolean); // record for next round's deduplication
     const durations = await preloadDurations(chosenUrls);
     const totalRoundMs = durations.reduce((a, b) => a + b, 0);
 
@@ -2182,11 +2184,76 @@
     }, 3500);
   }
 
-  /* ---------- Clip selection helpers ---------- */
-  function pickClipFile(count) {
+  /* ---------- Clip selection with rotation ----------
+     Tracks per-count rotation indices and within-round usage to avoid
+     repeating clips within a round or back-to-back across rounds.
+  */
+  const clipRotation = {};  // { count: nextIndex } — tracks where we are in each count's playlist
+  let lastRoundFiles = [];  // files used in the previous round
+
+  function initClipRotation() {
+    // Shuffle each clip list once at init so the rotation order isn't always the same
+    Object.entries(CONFIG.clipFiles).forEach(([count, files]) => {
+      CONFIG.clipFiles[count] = shuffleArray(files.slice()); // shuffle a copy
+      clipRotation[count] = 0;
+    });
+  }
+
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function pickClipFile(count, usedThisRound = []) {
     const files = CONFIG.clipFiles[count];
     if (!files || files.length === 0) return null;
-    return files[Math.floor(Math.random() * files.length)];
+    if (files.length === 1) return files[0]; // no choice possible
+
+    // Try to find a file that is:
+    //   1. Not already used in this round
+    //   2. Not used in the last round (soft preference)
+    // Start from the current rotation index and scan forward
+    const startIdx = clipRotation[count] || 0;
+    let bestFile = null;
+    let fallbackFile = null;
+
+    for (let offset = 0; offset < files.length; offset++) {
+      const idx = (startIdx + offset) % files.length;
+      const file = files[idx];
+      const usedNow = usedThisRound.includes(file);
+      const usedLast = lastRoundFiles.includes(file);
+
+      if (!usedNow && !usedLast) {
+        // Perfect: not used this round or last
+        bestFile = file;
+        clipRotation[count] = (idx + 1) % files.length;
+        break;
+      } else if (!usedNow && fallbackFile === null) {
+        // Acceptable: not used this round (but was used last round)
+        fallbackFile = file;
+        // Don't break — keep looking for a perfect option
+      }
+    }
+
+    const chosen = bestFile || fallbackFile || files[startIdx % files.length];
+    if (!bestFile) {
+      // Advance rotation even when forced to repeat
+      clipRotation[count] = (clipRotation[count] + 1) % files.length;
+    }
+    return chosen;
+  }
+
+  // Build the full sequence of clip URLs with deduplication applied across the whole round
+  function buildClipUrls(sequence) {
+    const usedThisRound = [];
+    return sequence.map(count => {
+      const url = pickClipFile(count, usedThisRound);
+      if (url) usedThisRound.push(url);
+      return url;
+    });
   }
 
   // Track which video element is "current" so we can use the other for preloading
@@ -2220,9 +2287,11 @@
 
   /* ---------- Clip playback ---------- */
   function playClip(count) {
+    // Note: in normal round flow, _chosenClipUrls is used directly (pre-deduplicated).
+    // This function exists as a fallback only.
     const url = pickClipFile(count);
     if (url) return playVideoClip(url);
-    return playSilhouetteClip(count);  // fallback for counts without video
+    return playSilhouetteClip(count);
   }
 
   function playVideoClip(url) {
@@ -2618,6 +2687,9 @@
 
   /* ---------- Init ---------- */
   async function init() {
+    // Shuffle clip playlists and initialise rotation indices
+    initClipRotation();
+
     state.sideProbs = estimateSideProbs();
     buildMarkets();
     refreshBetUI();
