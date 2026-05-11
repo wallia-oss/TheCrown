@@ -35,23 +35,101 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html { height: 100%; }
+
   body {
     background: var(--bg-deep);
     color: var(--text);
     font-family: var(--sans);
     font-size: 14px;
     line-height: 1.5;
-    min-height: 100vh;
-    overflow-x: hidden;
   }
 
-  /* Layout: header / main grid (canvas + bet panel) / history strip */
-  .app {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    min-height: 100vh;
-    max-width: 1600px;
-    margin: 0 auto;
+  /* Desktop: locked full-viewport, no scroll */
+  @media (min-width: 1101px) {
+    html, body { overflow: hidden; height: 100%; }
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .canvas {
+      position: relative;
+      background: #000;
+      overflow: hidden;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bet-panel {
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+      padding-bottom: 24px;
+    }
+    .history {
+      flex-shrink: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+
+  /* Tablet: 701–1100px — stacked layout, natural scroll, bet panel below canvas */
+  @media (max-width: 1100px) {
+    html, body { height: auto; overflow-x: hidden; overflow-y: auto; }
+    .app {
+      display: grid;
+      grid-template-rows: auto auto auto auto;
+      min-height: 100vh;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+    .canvas {
+      position: relative;
+      background: #000;
+      overflow: hidden;
+      min-height: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .history {
+      overflow-x: auto;
+    }
+  }
+
+  /* Tablet only (901–1100px): bet panel sits below canvas, scrolls normally */
+  @media (min-width: 901px) and (max-width: 1100px) {
+    .bet-panel {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      overflow-y: visible;
+      padding-bottom: 40px;
+    }
+    .mobile-bet-toggle { display: none; }
+    .app { padding-bottom: 0; }
+  }
+
+  /* Shared canvas styles (non-layout) */
+  .canvas-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   /* ---- HEADER ---- */
@@ -62,6 +140,7 @@
     padding: 16px 28px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-panel);
+    flex-shrink: 0;
   }
   .brand {
     display: flex;
@@ -100,31 +179,7 @@
   .meta-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
   .meta-value { font-family: var(--mono); color: var(--text); font-size: 13px; }
 
-  /* ---- MAIN GRID ---- */
-  .main {
-    display: grid;
-    grid-template-columns: 1fr 420px;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  /* ---- CANVAS (left) ---- */
-  .canvas {
-    position: relative;
-    background: #000;
-    overflow: hidden;
-    min-height: 600px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .canvas-bg {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-  }
+  /* ---- CANVAS inner elements ---- */
   .canvas-overlay {
     position: absolute;
     inset: 0;
@@ -319,13 +374,6 @@
     box-shadow: 0 0 10px rgba(74, 111, 158, 0.6);
   }
 
-  /* ---- BET PANEL (right) ---- */
-  .bet-panel {
-    background: var(--bg-panel);
-    border-left: 1px solid var(--border);
-    overflow-y: auto;
-    max-height: calc(100vh - 60px);
-  }
   .panel-section {
     padding: 18px 20px;
     border-bottom: 1px solid var(--border);
@@ -748,7 +796,6 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    overflow-x: auto;
   }
   .history-label {
     font-size: 10px;
@@ -949,17 +996,7 @@
     display: none;
   }
 
-  @media (max-width: 1100px) {
-    .main { grid-template-columns: 1fr; }
-    .bet-panel {
-      border-left: none;
-      border-top: 1px solid var(--border);
-      max-height: none;
-    }
-    .canvas { min-height: 480px; }
-  }
-
-  @media (max-width: 700px) {
+  @media (max-width: 900px) {
     /* Header compresses */
     .header {
       padding: 12px 16px;
@@ -987,11 +1024,11 @@
       letter-spacing: 0.1em;
     }
 
-    /* Canvas: fixed shorter height, betting drawer slides over */
+    /* Canvas fills space between header and history/FAB */
     .canvas {
       min-height: 0;
-      height: 60vh;
-      max-height: 60vh;
+      height: calc(100vh - 140px);
+      max-height: none;
     }
     .canvas-status { top: 12px; left: 12px; right: 12px; }
     .status-pill, .clip-counter {
@@ -1049,6 +1086,7 @@
       left: 0;
       right: 0;
       max-height: 85vh;
+      background: var(--bg-panel);
       transform: translateY(100%);
       transition: transform 0.3s ease;
       z-index: 60;
@@ -1113,14 +1151,177 @@
     .app { padding-bottom: 70px; }
   }
 
-  /* Tablet refinements (700–1100px): canvas a bit shorter, bet panel scrolls */
-  @media (min-width: 701px) and (max-width: 1100px) {
-    .canvas { min-height: 420px; height: 50vh; max-height: 520px; }
-    .bet-panel { padding-bottom: 20px; }
+  /* ============================================================
+     SPLASH SCREEN — Time Gentlemen Please
+     ============================================================ */
+  .splash {
+    position: fixed;
+    inset: 0;
+    background: #0d1a0f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: pointer;
+    overflow: hidden;
+    transition: opacity 0.8s ease;
+  }
+  .splash.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .splash.gone { display: none; }
+
+  /* Radial vignette */
+  .splash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 1;
   }
 
-  /* Subtle scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  /* Subtle cobblestone texture at the bottom */
+  .splash::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 35%;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .splash-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 32px 28px;
+    max-width: 420px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .splash-mk {
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(212, 165, 84, 0.6);
+    font-family: var(--sans);
+    animation: splash-fade-up 0.8s ease 0.2s both;
+  }
+
+  .splash-clock-wrap {
+    position: relative;
+    width: min(260px, 65vw);
+    height: min(260px, 65vw);
+    animation: splash-fade-up 0.8s ease 0.4s both;
+  }
+
+  /* Animated glow behind clock */
+  .splash-clock-glow {
+    position: absolute;
+    inset: -20px;
+    background: radial-gradient(ellipse at center, rgba(212, 165, 84, 0.12) 0%, transparent 70%);
+    animation: glow-pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
+  }
+
+  .splash-title {
+    text-align: center;
+    animation: splash-fade-up 0.8s ease 0.7s both;
+    width: 100%;
+    padding: 0 8px;
+  }
+  .splash-title-main {
+    font-family: var(--serif);
+    font-size: clamp(22px, 7.5vw, 36px);
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    text-shadow: 0 0 40px rgba(212, 165, 84, 0.4);
+    display: block;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  .splash-title-sub {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: rgba(232, 236, 243, 0.4);
+    margin-top: 10px;
+    display: block;
+  }
+
+  .splash-divider {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: splash-fade-up 0.6s ease 1.0s both;
+  }
+
+  .splash-tagline {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: rgba(232, 236, 243, 0.35);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+    animation: splash-fade-up 0.6s ease 1.1s both;
+  }
+
+  .splash-enter {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(212, 165, 84, 0.5);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    animation: splash-blink 1.6s ease-in-out 2s infinite;
+  }
+  @keyframes splash-blink {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.15; }
+  }
+
+  /* Auto-progress bar */
+  .splash-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    z-index: 3;
+    box-shadow: 0 0 8px rgba(212, 165, 84, 0.6);
+  }
+
+  @keyframes splash-fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Bell hidden until hands stop — animated via JS */
+  .splash-bell-group {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .splash-bell-group.visible { opacity: 1; }
+
+
   ::-webkit-scrollbar-track { background: var(--bg-deep); }
   ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
@@ -1128,6 +1329,116 @@
 </style>
 </head>
 <body>
+
+<!-- SPLASH SCREEN -->
+<div class="splash" id="splash">
+  <div class="splash-progress" id="splash-progress"></div>
+  <div class="splash-content">
+
+    <div class="splash-mk">MK19 Labs</div>
+
+    <div class="splash-clock-wrap">
+      <div class="splash-clock-glow"></div>
+      <svg viewBox="0 0 220 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="clockFace" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#1a2a1c"/>
+            <stop offset="100%" stop-color="#0d1a0f"/>
+          </radialGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Outer ring -->
+        <circle cx="110" cy="110" r="106" fill="none" stroke="#d4a554" stroke-width="1.5" opacity="0.3"/>
+        <circle cx="110" cy="110" r="102" fill="none" stroke="#d4a554" stroke-width="0.5" opacity="0.15"/>
+
+        <!-- Clock face -->
+        <circle cx="110" cy="110" r="100" fill="url(#clockFace)"/>
+
+        <!-- Decorative inner ring -->
+        <circle cx="110" cy="110" r="94" fill="none" stroke="#d4a554" stroke-width="0.8" opacity="0.2"/>
+
+        <!-- Hour markers (12 ticks) -->
+        <g stroke="#d4a554" stroke-linecap="round" opacity="0.7">
+          <!-- 12 -->  <line x1="110" y1="22" x2="110" y2="36" stroke-width="2.5"/>
+          <!-- 1  -->  <line x1="149" y1="31" x2="143" y2="42" stroke-width="1.5" opacity="0.5"/>
+          <!-- 2  -->  <line x1="178" y1="60" x2="169" y2="66" stroke-width="1.5" opacity="0.5"/>
+          <!-- 3  -->  <line x1="188" y1="110" x2="174" y2="110" stroke-width="2.5"/>
+          <!-- 4  -->  <line x1="178" y1="160" x2="169" y2="154" stroke-width="1.5" opacity="0.5"/>
+          <!-- 5  -->  <line x1="149" y1="189" x2="143" y2="178" stroke-width="1.5" opacity="0.5"/>
+          <!-- 6  -->  <line x1="110" y1="198" x2="110" y2="184" stroke-width="2.5"/>
+          <!-- 7  -->  <line x1="71" y1="189" x2="77" y2="178" stroke-width="1.5" opacity="0.5"/>
+          <!-- 8  -->  <line x1="42" y1="160" x2="51" y2="154" stroke-width="1.5" opacity="0.5"/>
+          <!-- 9  -->  <line x1="32" y1="110" x2="46" y2="110" stroke-width="2.5"/>
+          <!-- 10 -->  <line x1="42" y1="60" x2="51" y2="66" stroke-width="1.5" opacity="0.5"/>
+          <!-- 11 -->  <line x1="71" y1="31" x2="77" y2="42" stroke-width="1.5" opacity="0.5"/>
+        </g>
+
+        <!-- Roman numerals for key positions -->
+        <g font-family="Georgia, serif" fill="#d4a554" text-anchor="middle" dominant-baseline="central">
+          <text x="110" y="52" font-size="13" opacity="0.9">XII</text>
+          <text x="168" y="110" font-size="12" opacity="0.7">III</text>
+          <text x="110" y="168" font-size="12" opacity="0.7">VI</text>
+          <text x="52" y="110" font-size="12" opacity="0.7">IX</text>
+          <!-- XI for 11 o'clock -->
+          <text x="62" y="62" font-size="11" opacity="0.85">XI</text>
+        </g>
+
+        <!-- THE CROWN text inside clock face -->
+        <text x="110" y="138" font-family="Georgia,serif" font-size="9" fill="#d4a554"
+              text-anchor="middle" opacity="0.4" letter-spacing="3">THE CROWN</text>
+
+        <!-- Minute hand -->
+        <line id="splash-minute-hand"
+              x1="110" y1="110" x2="110" y2="38"
+              stroke="#f5d080" stroke-width="3" stroke-linecap="round"
+              transform="rotate(120,110,110)"/>
+
+        <!-- Hour hand -->
+        <line id="splash-hour-hand"
+              x1="110" y1="110" x2="110" y2="60"
+              stroke="#f5d080" stroke-width="5" stroke-linecap="round"
+              transform="rotate(120,110,110)"/>
+
+        <!-- Centre pin — on top of hands -->
+        <circle cx="110" cy="110" r="5" fill="#f5d080"/>
+        <circle cx="110" cy="110" r="2.5" fill="#0d1a0f"/>
+
+        <!-- Bell at top — hidden until hands stop, revealed by JS -->
+        <g id="splash-bell-group" class="splash-bell-group"
+           transform="translate(110,18)" style="transform-box:fill-box; transform-origin:50% 10%;">
+          <!-- Bell body centred at 0,0 offset -->
+          <path d="M-12,18 Q-12,2 0,0 Q12,2 12,18 Q16,24 20,26 L-20,26 Q-16,24 -12,18 Z"
+                fill="#d4a554" opacity="0.9"/>
+          <!-- Highlight -->
+          <path d="M-8,16 Q-8,6 0,4 Q8,6 8,16"
+                fill="none" stroke="#f5d080" stroke-width="1" opacity="0.35"/>
+          <!-- Clapper -->
+          <line x1="0" y1="26" x2="0" y2="32" stroke="#d4a554" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+          <circle cx="0" cy="34" r="3.5" fill="#d4a554" opacity="0.8"/>
+          <!-- Hanger bolt -->
+          <rect x="-2" y="-6" width="4" height="6" rx="2" fill="#d4a554" opacity="0.5"/>
+        </g>
+
+      </svg>
+    </div>
+
+    <div class="splash-title">
+      <span class="splash-title-main">Time Gentlemen Please</span>
+      <span class="splash-title-sub">A betting game by MK19 Labs</span>
+    </div>
+
+    <div class="splash-divider"></div>
+
+    <div class="splash-tagline">Last orders at The Crown</div>
+
+    <div class="splash-enter">Tap to enter</div>
+
+  </div>
+</div>
 
 <div class="app">
 
@@ -2685,8 +2996,108 @@
     setCCTV(!state.cctv);
   });
 
+  /* ---------- Splash screen ---------- */
+  function initSplash() {
+    const splash    = document.getElementById('splash');
+    const progressBar = document.getElementById('splash-progress');
+    const minuteHand  = document.getElementById('splash-minute-hand');
+    const hourHand    = document.getElementById('splash-hour-hand');
+    const bellGroup   = document.getElementById('splash-bell-group');
+
+    // Hard-fail guard — log what's missing so we can debug
+    if (!splash)      { console.error('splash: element not found'); return; }
+    if (!minuteHand)  { console.error('splash-minute-hand: element not found'); }
+    if (!hourHand)    { console.error('splash-hour-hand: element not found'); }
+    if (!bellGroup)   { console.error('splash-bell-group: element not found'); }
+    if (!minuteHand || !hourHand) return;
+
+    const MINUTE_START  = 120;
+    const MINUTE_END    = 360;
+    const HOUR_START    = 120;
+    const HOUR_END      = 330;
+    const HAND_DURATION = 3000;
+    const SPLASH_DURATION = 5500;
+
+    // Place hands at start position immediately so they're visible from frame 1
+    minuteHand.setAttribute('transform', `rotate(${MINUTE_START},110,110)`);
+    hourHand.setAttribute('transform',   `rotate(${HOUR_START},110,110)`);
+
+    function easeInOut(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    let handStartTime = null;
+    let handsFinished = false;
+
+    function animateHands(ts) {
+      if (!handStartTime) handStartTime = ts;
+      const elapsed = ts - handStartTime;
+      const t = Math.min(elapsed / HAND_DURATION, 1);
+      const e = easeInOut(t);
+      minuteHand.setAttribute('transform', `rotate(${MINUTE_START + (MINUTE_END - MINUTE_START) * e},110,110)`);
+      hourHand.setAttribute('transform',   `rotate(${HOUR_START   + (HOUR_END   - HOUR_START)   * e},110,110)`);
+      if (t < 1) {
+        requestAnimationFrame(animateHands);
+      } else if (!handsFinished) {
+        handsFinished = true;
+        ringBell();
+      }
+    }
+
+    function ringBell() {
+      if (!bellGroup) return;
+      bellGroup.classList.add('visible');
+      const swings = [16, -16, 10, -10, 6, -6, 3, -3, 0];
+      let idx = 0;
+      const SWING_MS = 130;
+      let swingStart = null;
+      function animateBell(ts) {
+        if (!swingStart) swingStart = ts;
+        if (idx >= swings.length - 1) {
+          bellGroup.setAttribute('transform', 'translate(110,18)');
+          return;
+        }
+        const t2 = Math.min((ts - swingStart) / SWING_MS, 1);
+        const angle = swings[idx] + (swings[idx + 1] - swings[idx]) * t2;
+        bellGroup.setAttribute('transform', `translate(110,18) rotate(${angle},0,-16)`);
+        if (t2 >= 1) { idx++; swingStart = ts; }
+        requestAnimationFrame(animateBell);
+      }
+      requestAnimationFrame(animateBell);
+    }
+
+    // Start hands after 400ms (let CSS fade-in animations settle first)
+    setTimeout(() => requestAnimationFrame(animateHands), 400);
+
+    // Progress bar + auto-dismiss
+    let dismissed = false;
+    let progressStart = null;
+
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.classList.add('gone'), 850);
+    }
+
+    function animateProgress(ts) {
+      if (!progressStart) progressStart = ts;
+      const fraction = Math.min((ts - progressStart) / SPLASH_DURATION, 1);
+      progressBar.style.width = (fraction * 100) + '%';
+      if (fraction < 1) requestAnimationFrame(animateProgress);
+      else dismiss();
+    }
+
+    splash.addEventListener('click', dismiss);
+    splash.addEventListener('touchend', e => { e.preventDefault(); dismiss(); });
+    requestAnimationFrame(animateProgress);
+  }
+
   /* ---------- Init ---------- */
   async function init() {
+    // Show splash screen
+    initSplash();
+
     // Shuffle clip playlists and initialise rotation indices
     initClipRotation();
 
